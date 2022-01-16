@@ -1,0 +1,30 @@
+{
+  "name": "chat.message-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yaritoo/chat.message-api.git"
+  },
+  "author": "yarito",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Yaritoo/chat.message-api/issues"
+  },
+  "homepage": "https://github.com/Yaritoo/chat.message-api#readme",
+  "dependencies": {
+    "body-parser": "^1.19.1",
+    "express": "^4.17.2",
+    "jsonwebtoken": "^8.5.1",
+    "kafkajs": "^1.15.0",
+    "mongoose": "^6.1.5",
+    "morgan": "^1.10.0",
+    "redis": "^4.0.1",
+    "socket.io": "^4.4.1"
+  }
+}
