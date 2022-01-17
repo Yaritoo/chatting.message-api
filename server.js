@@ -9,7 +9,7 @@ const eventHandler = require('./eventbus/event-handler');
 const Room = require('./api/model/room');
 
 const port = process.env.PORT || 3001;
-const redis_port = process.env.REDIS_PORT || 2000;
+const redis_port = process.env.REDIS_PORT || 6379;
 
 const clientRedis = redis.createClient(redis_port);
 const server = http.createServer(app);
@@ -24,13 +24,16 @@ configSubcribeManager();
 
 const test = async () => {
     try {
+        await clientRedis.connect();
+
         await eventbus.producer.connect();
 
         await eventbus.consumer.connect();
         await eventbus.consumer.subscribe({ topic: 'get-user', fromBeginning: true });
         await eventbus.consumer.run({
             eachMessage: async ({ topic, partition, message }) => {
-
+                let user = JSON.parse(message.value.toString());
+                await clientRedis.set(user._id, message.value.toString());
             }
         });
     } catch (err) {
@@ -56,6 +59,15 @@ io.on('connection', (socket) => {
 });
 
 exports.sendSocketRoom = (room, message) => {
-    io.to('room').emit('message', message);
+    io.to(room).emit('message', message);
 };
 
+exports.getRedis = async (key) => {
+    let result;
+    try{
+        result = await clientRedis.get(key);
+    }catch(err){
+        result = null;
+    }
+    return result
+}

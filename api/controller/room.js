@@ -3,6 +3,7 @@ const http = require('http');
 
 const Room = require('../model/room');
 const eventbus = require('../../eventbus/eventbus-kafka');
+const redis = require('../../server');
 
 exports.rooms_getAll = async (req, res, next) => {
     try {
@@ -18,23 +19,12 @@ exports.rooms_getAll = async (req, res, next) => {
 exports.rooms_ofUser = async (req, res, next) => {
     try {
         let rooms = await Room.find({ userIds: req.params.userId }).exec();
-        let ids = '';
-        rooms.forEach(room => {
-            ids += room.userIds.join(',') + ',';
-        });
-        let users = await getUsers(next, ids);
-        let response = rooms.map(room => {
-            return {
-                _id: room._id,
-                name: room.name,
-                users: room.userIds.map(u => {
-                    return {
-                        _id: u,
-                        userName: users.find(id => id._id == u).userName
-                    };
-                })
-            };
-        });
+        let ids = await generateIds(rooms);
+        let users;
+        if (ids != '')
+            users = await getUsers(next, ids);
+        console.log('ids: ' + ids);
+        let response = await result_getUsers(rooms, users);
         res.status(200).json(response);
     } catch (err) {
         res.status(500).json({
@@ -97,4 +87,42 @@ getUsers = (next, ids) => {
     }).on('error', next)).then(data => JSON.parse(data).users);
 
     return users;
+};
+
+result_getUsers = async (rooms, userHttp) => {
+    let resultProm = await Promise.all(rooms.map(async room => {
+        return {
+            _id: room._id,
+            name: room.name,
+            users: await Promise.all(room.userIds.map(async (id) => {
+                let user = JSON.parse(await redis.getRedis(id));
+                if (user == null)
+                    user = userHttp.find(u => u._id == id);
+                return {
+                    _id: id,
+                    userName: user?.userName
+                };
+            }))
+        };
+    }));
+
+    return resultProm;
+};
+
+generateIds = (rooms) => {
+    let idsProm = new Promise((resolve, reject) => {
+        let ids = '';
+        rooms.forEach(room => {
+            room.userIds.forEach(async (id, index, array) => {
+                let foundUser = JSON.parse(await redis.getRedis(id));
+                if (foundUser == null)
+                    ids += id + ',';
+                if (index == array.length - 1) {
+                    resolve(ids);
+                }
+            });
+        });
+    });
+
+    return idsProm;
 };
