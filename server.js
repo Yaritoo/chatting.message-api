@@ -11,7 +11,12 @@ const Room = require('./api/model/room');
 const port = process.env.PORT || 3001;
 const redis_port = process.env.REDIS_PORT || 6379;
 
-const clientRedis = redis.createClient(redis_port);
+const clientRedis = redis.createClient({
+    socket:{
+        host: 'redis',
+        port: 6379
+    }
+});
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: '*' }
@@ -33,6 +38,7 @@ const test = async () => {
         await eventbus.consumer.run({
             eachMessage: async ({ topic, partition, message }) => {
                 let user = JSON.parse(message.value.toString());
+                console.log('kafka receive: ', user);
                 await clientRedis.set(user._id, message.value.toString());
             }
         });

@@ -72,7 +72,7 @@ exports.room_leave = async (req, res, next) => {
 }
 
 getUsers = (next, ids) => {
-    var url = `http://localhost:3000/users/filter?ids=${encodeURIComponent(ids)}`;
+    var url = `http://user_api:3000/user/users/filter?ids=${encodeURIComponent(ids)}`;
     let users = new Promise((resolve, reject) => http.get(url, res => {
         let data = '';
         // A chunk of data has been received.
@@ -100,7 +100,7 @@ result_getUsers = async (rooms, userHttp) => {
                     user = userHttp.find(u => u._id == id);
                 return {
                     _id: id,
-                    userName: user?.userName
+                    userName: user.userName
                 };
             }))
         };

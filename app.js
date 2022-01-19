@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const message = require('./api/route/message');
 const room = require('./api/route/room');
 
-mongoose.connect('mongodb+srv://admin:' + process.env.MONGO_ATLAS_PW + '@chatmessage.sgewz.mongodb.net/myFirstDatabase?retryWrites=true&w=majority');
+mongoose.connect('mongodb+srv://admin:' + 'admin' + '@chatmessage.sgewz.mongodb.net/myFirstDatabase?retryWrites=true&w=majority');
 mongoose.Promise = global.Promise;
 
 app.use(morgan('dev'));
