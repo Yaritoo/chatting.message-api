@@ -23,7 +23,6 @@ exports.rooms_ofUser = async (req, res, next) => {
         let users;
         if (ids != '')
             users = await getUsers(next, ids);
-        console.log('ids: ' + ids);
         let response = await result_getUsers(rooms, users);
         res.status(200).json(response);
     } catch (err) {

@@ -12,7 +12,7 @@ const port = process.env.PORT || 3001;
 const redis_port = process.env.REDIS_PORT || 6379;
 
 const clientRedis = redis.createClient({
-    socket:{
+    socket: {
         host: 'redis',
         port: 6379
     }
@@ -50,7 +50,7 @@ test();
 
 server.listen(port);
 io.on('connection', (socket) => {
-    console.log('server connected');
+    console.log('A client is connected');
     socket.on('id', async mess => {
         if (!mongoose.Types.ObjectId.isValid(mess))
             return;
@@ -60,19 +60,31 @@ io.on('connection', (socket) => {
         });
     });
     socket.on('disconnect', () => {
-        console.log('disconnected');
+        console.log('A client disconnected');
     });
 });
 
-exports.sendSocketRoom = (room, message) => {
-    io.to(room).emit('message', message);
+io.of("/").adapter.on("join-room", (room, id) => {
+    console.log(`socket ${id} has joined room ${room}`);
+});
+
+exports.sendSocketRoomExceptSender = (room, userId, message) => {
+    const clients = io.of("/").adapter.rooms.get(room);
+    console.log('clients: ' + Array.from(clients));
+    for (let socketId of clients) {
+        if (socketId == userId) {
+            continue;
+        }
+
+        io.to(socketId).emit('message', message);
+    }
 };
 
 exports.getRedis = async (key) => {
     let result;
-    try{
+    try {
         result = await clientRedis.get(key);
-    }catch(err){
+    } catch (err) {
         result = null;
     }
     return result

@@ -44,8 +44,8 @@ exports.message_create = async (req, res, next) => {
             userId: req.body.userId,
             roomId: req.body.roomId
         });
-        await newMessage.save();
-        server.sendSocketRoom(req.body.roomId, newMessage);
+        //await newMessage.save();
+        server.sendSocketRoomExceptSender(req.body.roomId, req.body.socketId, newMessage);
         res.status(201).json(newMessage);
     } catch (err) {
         res.status(500).json({
