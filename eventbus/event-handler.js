@@ -1,12 +1,12 @@
 const eventbus = require('./eventbus-kafka');
 const Room = require('../api/model/room');
+const server = require('../server');
 
-exports.GetUserHandler = async (res, message) => {
-    let rooms = await Room.find({userIds: req.params.userId}).exec();
-    await eventbus.consumer.run({
-        eachMessage: async ({ topic, partition, message }) => {
-            console.log(message.value.toString());
-        }
-    });
-    res.status(200).json(rooms);
+exports.GetUserHandler = async (partition, message) => {
+    let user = JSON.parse(message.value.toString());
+    let result = {
+        id: user.id,
+        userName: user.userName
+    };
+    console.log('kafka receive: ', result);
 }

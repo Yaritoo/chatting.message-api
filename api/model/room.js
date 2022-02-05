@@ -3,12 +3,17 @@ const mongoose = require('mongoose');
 const roomSchema = mongoose.Schema({
     _id: mongoose.Schema.Types.ObjectId,
     name: String,
-    userIds: [
+    category: {
+        type: String,
+        required: true
+    },
+    users: [
         {
-            type: String,
-            required: true
+            _id: mongoose.Schema.Types.ObjectId,
+            status: Number,
+            recentTime: Date
         }
     ]
 })
-roomSchema.index({userIds: 1});
+roomSchema.index({ users: 1 });
 module.exports = mongoose.model('Room', roomSchema);

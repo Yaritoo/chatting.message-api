@@ -3,12 +3,20 @@ const http = require('http');
 
 const Room = require('../model/room');
 const eventbus = require('../../eventbus/eventbus-kafka');
-const redis = require('../../server');
+const server = require('../../server');
 
 exports.rooms_getAll = async (req, res, next) => {
     try {
         let rooms = await Room.find().exec();
-        res.status(200).json({ rooms });
+        let result = rooms.map(r => {
+            return {
+                id: r.id,
+                name: r.name,
+                category: r.category,
+                users: r.users
+            }
+        })
+        res.status(200).json(result);
     } catch (err) {
         res.status(500).json({
             error: err
@@ -18,13 +26,15 @@ exports.rooms_getAll = async (req, res, next) => {
 
 exports.rooms_ofUser = async (req, res, next) => {
     try {
-        let rooms = await Room.find({ userIds: req.params.userId }).exec();
-        let ids = await generateIds(rooms);
-        let users;
-        if (ids != '')
-            users = await getUsers(next, ids);
-        let response = await result_getUsers(rooms, users);
-        res.status(200).json(response);
+        let rooms = await Room.find({ "users._id": req.params.userId }).exec();
+        if (rooms.length == 0) {
+            res.status(200).json([]);
+            return;
+        }
+        let ids = generateIds(rooms);
+        let users = await getUsersFromApi(next, ids.join());
+        let result = getResult(rooms, users);
+        res.status(200).json(result);
     } catch (err) {
         res.status(500).json({
             error: err
@@ -32,15 +42,60 @@ exports.rooms_ofUser = async (req, res, next) => {
     }
 };
 
+exports.room_inboxOfUser = async (req, res, next) => {
+    try {
+        let ids = req.query.ids;
+        if (ids)
+            ids = ids.split(',')
+        let rooms = await Room.find({ category: 1, users: { $size: 2 }, 'users._id': { $all: ids } }).exec();
+        if (rooms.length == 0) {
+            res.status(200).json({});
+            return;
+        }
+        let result = {
+            id: rooms[0].id,
+            name: rooms[0].name,
+            category: rooms[0].category
+        };
+        res.status(200).json(result);
+    } catch (err) {
+        res.status(500).json({
+            error: err
+        });
+    }
+}
+
 exports.room_create = async (req, res, next) => {
     try {
         let newRoom = new Room({
             _id: new mongoose.Types.ObjectId,
             name: req.body.name,
-            userIds: req.body.userIds
+            category: req.body.category,
+            users: req.body.users.map(user => {
+                return {
+                    _id: user.id,
+                    status: user.status,
+                    recentTime: Date.now()
+                }
+            })
         });
-        await newRoom.save();
-        res.status(201).json(newRoom);
+        //await newRoom.save();
+
+        let result = {
+            id: newRoom.id,
+            name: newRoom.name,
+            category: newRoom.category,
+            users: newRoom.users.map(user => {
+                return {
+                    id: user.id,
+                    status: user.status,
+                    //recentTime: Date.now()
+                }
+            })
+        };
+        await handleSocketAfterCreateRoom(result);
+        await server.sendSocketRoomExceptSender('room', result.id, req.body.socketId, result);
+        res.status(201).json(result);
     } catch (err) {
         res.status(500).json({
             error: err
@@ -50,7 +105,7 @@ exports.room_create = async (req, res, next) => {
 
 exports.room_join = async (req, res, next) => {
     try {
-        await Room.updateOne({ _id: req.body.roomId }, { $push: { userIds: req.body.userId } });
+        await Room.updateOne({ _id: req.body.roomId }, { $push: { users: req.body.user } });
         res.status(204).json();
     } catch (err) {
         res.status(500).json({
@@ -61,7 +116,7 @@ exports.room_join = async (req, res, next) => {
 
 exports.room_leave = async (req, res, next) => {
     try {
-        await Room.updateOne({ _id: req.body.roomId }, { $pull: { userIds: req.body.userId } });
+        await Room.updateOne({ _id: req.body.roomId }, { $pull: { users: req.body.user } });
         res.status(204).json();
     } catch (err) {
         res.status(500).json({
@@ -70,7 +125,18 @@ exports.room_leave = async (req, res, next) => {
     }
 }
 
-getUsers = (next, ids) => {
+exports.rooms_deleteAll = async (req, res, next) => {
+    try {
+        await Room.remove({}).exec()
+        res.status(204).json();
+    } catch (err) {
+        res.status(500).json({
+            errror: err
+        })
+    }
+}
+
+getUsersFromApi = (next, ids) => {
     var url = `http://user_api:3000/user/users/filter?ids=${encodeURIComponent(ids)}`;
     let users = new Promise((resolve, reject) => http.get(url, res => {
         let data = '';
@@ -83,45 +149,62 @@ getUsers = (next, ids) => {
         res.on('end', () => {
             resolve(data);
         });
-    }).on('error', next)).then(data => JSON.parse(data).users);
+    }).on('error', next))
+        .then(data => JSON.parse(data))
+        .catch(error => {
+            console.log(error);
+        });;
 
     return users;
 };
 
-result_getUsers = async (rooms, userHttp) => {
-    let resultProm = await Promise.all(rooms.map(async room => {
+getResult = (rooms, users) => {
+    if (rooms.length == 0)
+        return {};
+    return rooms.map(room => {
+        let result = room.users.map(user => {
+            let foundUser = users.find(u => u.id == user.id);
+            return {
+                id: user.id,
+                userName: foundUser.userName,
+                status: user.status,
+                recentTime: user.recentTime
+            };
+        });
         return {
-            _id: room._id,
+            id: room.id,
             name: room.name,
-            users: await Promise.all(room.userIds.map(async (id) => {
-                let user = JSON.parse(await redis.getRedis(id));
-                if (user == null)
-                    user = userHttp.find(u => u._id == id);
-                return {
-                    _id: id,
-                    userName: user.userName
-                };
-            }))
+            category: room.category,
+            users: result
         };
-    }));
-
-    return resultProm;
+    });
 };
 
 generateIds = (rooms) => {
-    let idsProm = new Promise((resolve, reject) => {
-        let ids = '';
-        rooms.forEach(room => {
-            room.userIds.forEach(async (id, index, array) => {
-                let foundUser = JSON.parse(await redis.getRedis(id));
-                if (foundUser == null)
-                    ids += id + ',';
-                if (index == array.length - 1) {
-                    resolve(ids);
-                }
-            });
-        });
+    let ids = [];
+    rooms.forEach(room => {
+        for (us of room.users) {
+            ids.push(us.id);
+        }
     });
-
-    return idsProm;
+    return ids;
 };
+
+handleSocketAfterCreateRoom = async (room) => {
+    try {
+        await Promise.all(room.users.map(async user => {
+            let sockets = await server.getRedis(user.id);
+            if (sockets == null)
+                return;
+            let listSocket = sockets.split(',');
+            await Promise.all(listSocket.map(async s => {
+                console.log(s);
+                await server.joinSocketRoom(room.id, s);
+            }));
+        }));
+    } catch (err) {
+        console.log('wtfff');
+        console.log(err);
+    }
+
+}

@@ -18,13 +18,14 @@
   },
   "homepage": "https://github.com/Yaritoo/chat.message-api#readme",
   "dependencies": {
+    "@socket.io/redis-adapter": "^7.1.0",
     "body-parser": "^1.19.1",
     "express": "^4.17.2",
     "jsonwebtoken": "^8.5.1",
     "kafkajs": "^1.15.0",
     "mongoose": "^6.1.5",
     "morgan": "^1.10.0",
-    "redis": "^4.0.1",
+    "redis": "^4.0.2",
     "socket.io": "^4.4.1"
   }
 }

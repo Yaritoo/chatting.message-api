@@ -1,4 +1,5 @@
-const {Kafka} = require('kafkajs');
+const { Kafka } = require('kafkajs');
+const eventHandler = require('./event-handler');
 
 const kafka = new Kafka({
     clientId: 'message-app',
@@ -7,8 +8,13 @@ const kafka = new Kafka({
 
 const producer = kafka.producer();
 
-const consumer = kafka.consumer({groupId: 'group2'});
+const consumer = kafka.consumer({ groupId: 'group2' });
 
 const subscribeManager = {};
 
-module.exports = {producer, consumer, subscribeManager};
+const manageSubcribe = () => {
+    console.log('event bus');
+    subscribeManager['get-user'] = eventHandler.GetUserHandler;
+};
+
+module.exports = { producer, consumer, subscribeManager, manageSubcribe };
