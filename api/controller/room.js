@@ -67,11 +67,13 @@ exports.room_inboxOfUser = async (req, res, next) => {
 
 exports.room_create = async (req, res, next) => {
     try {
+        let ids = [];
         let newRoom = new Room({
             _id: new mongoose.Types.ObjectId,
             name: req.body.name,
             category: req.body.category,
             users: req.body.users.map(user => {
+                ids.push(user.id);
                 return {
                     _id: user.id,
                     status: user.status,
@@ -81,13 +83,17 @@ exports.room_create = async (req, res, next) => {
         });
         await newRoom.save();
 
+        let users = await getUsersFromApi(next, ids.join());
+
         let result = {
             id: newRoom.id,
             name: newRoom.name,
             category: newRoom.category,
             users: newRoom.users.map(user => {
+                let foundUser = users.find(u => u.id == user.id);
                 return {
                     id: user.id,
+                    userName: foundUser.userName,
                     status: user.status,
                     recentTime: Date.now()
                 }
