@@ -79,7 +79,7 @@ exports.room_create = async (req, res, next) => {
                 }
             })
         });
-        //await newRoom.save();
+        await newRoom.save();
 
         let result = {
             id: newRoom.id,
@@ -89,7 +89,7 @@ exports.room_create = async (req, res, next) => {
                 return {
                     id: user.id,
                     status: user.status,
-                    //recentTime: Date.now()
+                    recentTime: Date.now()
                 }
             })
         };

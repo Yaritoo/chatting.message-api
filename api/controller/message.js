@@ -8,6 +8,33 @@ const server = require('../../server');
 exports.messages_ofRoom = async (req, res, next) => {
     try {
         let messages = await Message.find({ roomId: req.params.roomId }).sort({ createdTime: -1 }).exec();
+        /*
+        let test = await Message.aggregate([
+            {
+                $lookup: {
+                    from: 'rooms',
+                    let: { userId: '$userId', roomId: '$roomId' },
+                    pipeline: [
+                        {
+                            $match: {
+                                _id: '$$roomId'
+                            }
+                        }
+                    ],
+                    as: 'roomMessages'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    content: 1,
+                    roomMessages: 1
+                }
+            }
+        ]).exec();
+        console.log(messages);
+        res.status(200).json(test);
+        return;*/
         if (messages.length == 0) {
             res.status(200).json([]);
             return;
@@ -49,7 +76,7 @@ exports.message_create = async (req, res, next) => {
             userId: req.body.userId,
             roomId: req.body.roomId
         });
-        //await newMessage.save();
+        await newMessage.save();
         let user = await getUser(next, newMessage.userId);
         let result = {
             id: newMessage.id,
@@ -65,6 +92,17 @@ exports.message_create = async (req, res, next) => {
         res.status(500).json({
             error: err
         });
+    }
+}
+
+exports.messages_deleteAll = async (req, res, next) => {
+    try {
+        await Message.remove({}).exec()
+        res.status(204).json();
+    } catch (err) {
+        res.status(500).json({
+            errror: err
+        })
     }
 }
 
