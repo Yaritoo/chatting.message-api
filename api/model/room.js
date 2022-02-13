@@ -4,7 +4,7 @@ const roomSchema = mongoose.Schema({
     _id: mongoose.Schema.Types.ObjectId,
     name: String,
     category: {
-        type: String,
+        type: Number,
         required: true
     },
     users: [

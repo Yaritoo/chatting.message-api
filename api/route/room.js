@@ -16,6 +16,8 @@ router.put('/join', checkAuth, RoomController.room_join);
 
 router.put('/leave', checkAuth, RoomController.room_leave);
 
+router.put('/user-status', checkAuth, RoomController.room_updateUser);
+
 router.delete('/', checkAuth, RoomController.rooms_deleteAll);
 
 module.exports = router;

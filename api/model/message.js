@@ -6,7 +6,10 @@ const messageSchema = mongoose.Schema({
     createdTime: Date,
     replyMessageId: mongoose.Schema.Types.ObjectId,
     userId: mongoose.Schema.Types.ObjectId,
-    roomId: {type: mongoose.Schema.Types.ObjectId, ref: 'Room', required: true}
+    roomId: {
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Room', required: true
+    }
 })
 
 messageSchema.index({userId: 1});

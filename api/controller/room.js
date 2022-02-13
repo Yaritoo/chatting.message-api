@@ -131,6 +131,27 @@ exports.room_leave = async (req, res, next) => {
     }
 }
 
+exports.room_updateUser = async (req, res, next) => {
+    try {
+        await Room.updateOne(
+            {
+                _id: req.body.roomId,
+                'users._id': req.body.userId
+            },
+            {
+                $set: {
+                    'users.$.recentTime': new Date(),
+                    'users.$.status': 2
+                }
+            });
+        res.status(204).json();
+    } catch (err) {
+        res.status(500).json({
+            error: err
+        })
+    }
+}
+
 exports.rooms_deleteAll = async (req, res, next) => {
     try {
         await Room.remove({}).exec()

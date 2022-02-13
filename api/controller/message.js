@@ -7,19 +7,29 @@ const server = require('../../server');
 
 exports.messages_ofRoom = async (req, res, next) => {
     try {
-        let messages = await Message.find({ roomId: req.params.roomId }).sort({ createdTime: -1 }).exec();
-        /*
-        let test = await Message.aggregate([
+        //let messages = await Message.find({ roomId: req.params.roomId }).sort({ createdTime: -1 }).exec();
+
+        let messages = await Message.aggregate([
             {
                 $lookup: {
                     from: 'rooms',
-                    let: { userId: '$userId', roomId: '$roomId' },
+                    let: { m_userId: '$userId', m_roomId: '$roomId' },
                     pipeline: [
                         {
                             $match: {
-                                _id: '$$roomId'
+                                $expr: {
+                                    $eq: ['$_id', { '$toObjectId': req.params.roomId }]
+                                }
                             }
-                        }
+                        },
+                        { $unwind: '$users' },
+                        {
+                            $match: {
+                                $expr: {
+                                    $eq: ['$users._id', { '$toObjectId': req.params.userId }]
+                                }
+                            }
+                        },
                     ],
                     as: 'roomMessages'
                 }
@@ -28,13 +38,22 @@ exports.messages_ofRoom = async (req, res, next) => {
                 $project: {
                     _id: 1,
                     content: 1,
-                    roomMessages: 1
+                    createdTime: 1,
+                    userId: 1,
+                    roomMessages: {
+                        $arrayElemAt: ['$roomMessages', 0]
+                    }
+                }
+            },
+            {
+                $match: {
+                    $expr: {
+                        $gt: ['$createdTime', '$roomMessages.users.recentTime']
+                    }
                 }
             }
         ]).exec();
-        console.log(messages);
-        res.status(200).json(test);
-        return;*/
+
         if (messages.length == 0) {
             res.status(200).json([]);
             return;

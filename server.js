@@ -7,7 +7,6 @@ const redis_adapter = require('@socket.io/redis-adapter');
 const app = require('./app');
 const eventbus = require('./eventbus/eventbus-kafka');
 const Room = require('./api/model/room');
-const { set } = require('./app');
 
 const port = process.env.PORT || 3001;
 const redis_port = process.env.REDIS_PORT || 6379;
@@ -42,9 +41,11 @@ const test = async () => {
         console.log(err);
     }
 }
-test();
 
 server.listen(port);
+
+test();
+
 io.on('connection', (socket) => {
     console.log('A client is connected');
     socket.on('id', async mess => {
